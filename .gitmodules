@@ -1,0 +1,36 @@
+[submodule "modules/core"]
+	path = modules/core
+	url = https://github.com/cgride/core.git
+	branch = dev
+[submodule "modules/project"]
+	path = modules/project
+	url = https://github.com/cgride/project.git
+	branch = dev
+[submodule "modules/toolchains"]
+	path = modules/toolchains
+	url = https://github.com/cgride/toolchains.git
+	branch = dev
+[submodule "modules/graph"]
+	path = modules/graph
+	url = https://github.com/cgride/graph.git
+	branch = dev
+[submodule "modules/executor"]
+	path = modules/executor
+	url = https://github.com/cgride/executor.git
+	branch = dev
+[submodule "modules/cache"]
+	path = modules/cache
+	url = https://github.com/cgride/cache.git
+	branch = dev
+[submodule "modules/engine"]
+	path = modules/engine
+	url = https://github.com/cgride/engine.git
+	branch = dev
+[submodule "modules/config"]
+	path = modules/config
+	url = https://github.com/cgride/config.git
+	branch = dev
+[submodule "modules/cli"]
+	path = modules/cli
+	url = https://github.com/cgride/cli.git
+	branch = dev
