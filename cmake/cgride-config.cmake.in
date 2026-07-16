@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(cgride-core CONFIG REQUIRED)
+find_dependency(cgride-project CONFIG REQUIRED)
+find_dependency(cgride-graph CONFIG REQUIRED)
+find_dependency(cgride-toolchains CONFIG REQUIRED)
+find_dependency(cgride-executor CONFIG REQUIRED)
+find_dependency(cgride-cache CONFIG REQUIRED)
+find_dependency(cgride-engine CONFIG REQUIRED)
+find_dependency(cgride-config CONFIG REQUIRED)
+find_dependency(cgride-cli CONFIG REQUIRED)
+
+include("${CMAKE_CURRENT_LIST_DIR}/cgride-targets.cmake")
+
+check_required_components(cgride)

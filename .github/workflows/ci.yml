@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.os }} / ${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        build_type: [Debug, Release]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select strict compiler flags
+        run: |
+          set -euo pipefail
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            strict_flags="/W4 /WX /permissive-"
+            release_flags="/O2"
+          else
+            strict_flags="-Wall -Wextra -Wpedantic -Werror"
+            release_flags="-O3"
+          fi
+          echo "STRICT_FLAGS=$strict_flags" >> "$GITHUB_ENV"
+          echo "RELEASE_FLAGS=$release_flags" >> "$GITHUB_ENV"
+          echo "INSTALL_PREFIX=$RUNNER_TEMP/cgride-install" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: |
+          set -euo pipefail
+          cmake -S . -B build-ninja -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
+            -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
+            -DCGRIDE_BUILD_TESTS=ON \
+            -DCGRIDE_BUILD_MODULE_TESTS=ON
+
+      - name: Build
+        run: cmake --build build-ninja --parallel
+
+      - name: Test
+        run: ctest --test-dir build-ninja --output-on-failure
+
+      - name: Install
+        run: cmake --install build-ninja --prefix "$INSTALL_PREFIX"
+
+      - name: Verify find_package consumer
+        run: |
+          set -euo pipefail
+          consumer="$RUNNER_TEMP/cgride-consumer"
+          cmake -E rm -rf "$consumer"
+          cmake -E make_directory "$consumer"
+          cat > "$consumer/CMakeLists.txt" <<'EOF'
+          cmake_minimum_required(VERSION 3.22)
+          project(cgride_consumer LANGUAGES CXX)
+          find_package(cgride CONFIG REQUIRED)
+          add_executable(cgride_consumer main.cpp)
+          target_link_libraries(cgride_consumer PRIVATE cgride::cgride)
+          target_compile_features(cgride_consumer PRIVATE cxx_std_23)
+          EOF
+          cat > "$consumer/main.cpp" <<'EOF'
+          #include <cassert>
+          #include <string_view>
+          #include <cgride/cgride.hpp>
+          int main()
+          {
+            assert(cgride::version_string == std::string_view("0.1.0"));
+            cgride::project::Project project("consumer");
+            auto &app = project.executable("app");
+            app.source("main.cpp");
+            return project.has_target("app") ? 0 : 1;
+          }
+          EOF
+          cmake -S "$consumer" -B "$consumer/build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX"
+          cmake --build "$consumer/build" --parallel
+          "$consumer/build/cgride_consumer"
+
+      - name: Validate installed CLI examples
+        run: |
+          set -euo pipefail
+          export PATH="$INSTALL_PREFIX/bin:$PATH"
+          cgride --version
+          for dir in hello static-library multiple-targets; do
+            (cd "examples/$dir" && cgride build && cgride run)
+          done
+          (cd examples/multiple-targets && cgride run --target server)
+          (cd examples/multiple-targets && cgride run --target worker)
