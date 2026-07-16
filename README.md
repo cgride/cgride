@@ -2,10 +2,11 @@
   <img
     src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1784201609/cgride_sogdra.png"
     width="100%"
-    height="650px"
     alt="Cgride banner"
   />
 </p>
+
+<h1 align="center">Cgride</h1>
 
 <p align="center">
   <strong>Build C++ with C++.</strong>
@@ -198,55 +199,73 @@ git submodule update --remote --recursive
 
 ## Build
 
-From the umbrella repository root, use the Vix workflow:
+From the repository root:
 
 ```bash
-vix build
+vix build --build-target all -v
 ```
 
-For a release build:
+Disable umbrella tests:
 
 ```bash
-vix build --preset release
+vix build --build-target all -v -- -DCGRIDE_BUILD_TESTS=OFF
 ```
 
-For detailed build decisions and commands:
+Disable module tests:
 
 ```bash
-vix build -v
+vix build --build-target all -v -- -DCGRIDE_BUILD_MODULE_TESTS=OFF
 ```
 
-## Run Tests
-
-Run the validation suite through Vix:
+Disable all tests:
 
 ```bash
-vix check --tests
+vix build --build-target all -v -- \
+  -DCGRIDE_BUILD_TESTS=OFF \
+  -DCGRIDE_BUILD_MODULE_TESTS=OFF
 ```
 
-Run only tests when the project has already been prepared:
+## Run tests
+
+Run the test suite from the generated build directory:
 
 ```bash
-vix tests
+ctest --test-dir build-ninja --output-on-failure
+```
+
+Run only the umbrella header test:
+
+```bash
+./build-ninja/tests/cgride_umbrella_header_test
 ```
 
 ## Install
 
-Install the project through Vix:
+Build the release preset first:
 
 ```bash
-vix install
+vix build --preset release --build-target all -v
 ```
 
-The install step exports the public Cgride umbrella target and the module targets required by it, including `cgride::core`, `cgride::project`, `cgride::graph`, `cgride::toolchains`, `cgride::executor`, `cgride::cache`, `cgride::engine`, `cgride::config`, and `cgride::cli`.
+Install the umbrella package:
 
-After installation, integrations include:
+```bash
+sudo cmake --install build-release --prefix /usr/local
+```
+
+The install step currently uses CMake because the source tree is still packaged through the native CMake install model. This is a repository build detail, not the user-facing Cgride project format. User projects are described with `cgride.cpp`.
+
+After installation, another C++ project can use:
 
 ```cpp
 #include <cgride/cgride.hpp>
 ```
 
-User projects remain Cgride projects and are built through the `cgride` CLI. Repository maintenance stays centered on the Vix commands above.
+and link with:
+
+```text
+cgride::cgride
+```
 
 ## Examples
 
@@ -295,6 +314,10 @@ That separation is what allows Cgride to be used both as a command-line tool and
 Contributions should improve the clarity, correctness, and maintainability of the build engine. Useful areas include project modeling, graph planning, toolchain discovery, execution behavior, caching, diagnostics, tests, examples, and documentation.
 
 For larger changes, start with an issue or discussion so the design can be considered across the module boundaries.
+
+## Maintained by Softadastra
+
+Cgride is maintained by [Softadastra](https://softadastra.com).
 
 ## License
 
