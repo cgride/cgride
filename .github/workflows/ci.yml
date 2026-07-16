@@ -98,9 +98,68 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="$INSTALL_PREFIX/bin:$PATH"
+          export CGRIDE_PREFIX_PATH="$INSTALL_PREFIX"
           cgride --version
           for dir in hello static-library multiple-targets; do
             (cd "examples/$dir" && cgride build && cgride run)
           done
           (cd examples/multiple-targets && cgride run --target server)
           (cd examples/multiple-targets && cgride run --target worker)
+
+      - name: Validate cgride.cpp project loading
+        run: |
+          set -euo pipefail
+          export PATH="$INSTALL_PREFIX/bin:$PATH"
+          export CGRIDE_PREFIX_PATH="$INSTALL_PREFIX"
+          fixture="$RUNNER_TEMP/cgride-cpp-loading"
+          cmake -E rm -rf "$fixture"
+          cmake -E make_directory "$fixture/prefer/src" "$fixture/missing" "$fixture/upward/src" "$fixture/upward/sub/dir"
+          cat > "$fixture/prefer/cgride.cpp" <<'EOF'
+          #include <cgride/project.hpp>
+          void cgride_configure(cgride::project::Project &project)
+          {
+            auto &app = project.executable("prefer_cpp");
+            app.sources("src/main.cpp");
+          }
+          EOF
+          cat > "$fixture/prefer/src/main.cpp" <<'EOF'
+          #include <iostream>
+          int main()
+          {
+            std::cout << "from cgride.cpp\n";
+          }
+          EOF
+          cat > "$fixture/prefer/cgride.config" <<'EOF'
+          [project]
+          name = legacy
+
+          [target.legacy]
+          kind = executable
+          sources = missing.cpp
+          EOF
+          prefer_output=$(cd "$fixture/prefer" && cgride run --rebuild)
+          test "$prefer_output" = "from cgride.cpp"
+
+          cat > "$fixture/upward/cgride.cpp" <<'EOF'
+          #include <cgride/project.hpp>
+          void cgride_configure(cgride::project::Project &project)
+          {
+            auto &app = project.executable("upward");
+            app.sources("src/main.cpp");
+          }
+          EOF
+          cat > "$fixture/upward/src/main.cpp" <<'EOF'
+          #include <iostream>
+          int main()
+          {
+            std::cout << "upward works\n";
+          }
+          EOF
+          upward_output=$(cd "$fixture/upward/sub/dir" && cgride run --rebuild)
+          test "$upward_output" = "upward works"
+
+          if (cd "$fixture/missing" && cgride build) > "$fixture/missing.out" 2> "$fixture/missing.err"; then
+            echo "cgride build unexpectedly succeeded without cgride.cpp" >&2
+            exit 1
+          fi
+          grep -q "Cgride expects a cgride.cpp project file" "$fixture/missing.err"
