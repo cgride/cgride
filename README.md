@@ -198,89 +198,55 @@ git submodule update --remote --recursive
 
 ## Build
 
-From the umbrella repository root, configure a Ninja build directory:
+From the umbrella repository root, use the Vix workflow:
 
 ```bash
-cmake -S . -B build-ninja -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCGRIDE_BUILD_TESTS=ON \
-  -DCGRIDE_BUILD_MODULE_TESTS=ON
+vix build
 ```
 
-Build everything:
+For a release build:
 
 ```bash
-cmake --build build-ninja --parallel
+vix build --preset release
 ```
 
-For strict local validation, use warnings as errors. In Release builds, keep assertions enabled so the test executables remain meaningful:
+For detailed build decisions and commands:
 
 ```bash
-cmake -S . -B build-ninja -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror" \
-  -DCMAKE_CXX_FLAGS_RELEASE="-O3" \
-  -DCGRIDE_BUILD_TESTS=ON \
-  -DCGRIDE_BUILD_MODULE_TESTS=ON
-cmake --build build-ninja --parallel
-```
-
-Disable umbrella tests:
-
-```bash
-cmake -S . -B build-ninja -G Ninja -DCGRIDE_BUILD_TESTS=OFF
-```
-
-Disable module tests:
-
-```bash
-cmake -S . -B build-ninja -G Ninja -DCGRIDE_BUILD_MODULE_TESTS=OFF
+vix build -v
 ```
 
 ## Run Tests
 
-Run the full test suite from the generated build directory:
+Run the validation suite through Vix:
 
 ```bash
-ctest --test-dir build-ninja --output-on-failure
+vix check --tests
 ```
 
-Run only the umbrella header test:
+Run only tests when the project has already been prepared:
 
 ```bash
-./build-ninja/tests/cgride_umbrella_header_test
+vix tests
 ```
 
 ## Install
 
-Install the umbrella package and all module packages from the build directory:
+Install the project through Vix:
 
 ```bash
-sudo cmake --install build-ninja --prefix /usr/local
+vix install
 ```
 
-The install step exports:
+The install step exports the public Cgride umbrella target and the module targets required by it, including `cgride::core`, `cgride::project`, `cgride::graph`, `cgride::toolchains`, `cgride::executor`, `cgride::cache`, `cgride::engine`, `cgride::config`, and `cgride::cli`.
 
-```text
-cgride::cgride
-```
-
-It also installs the module targets required by the umbrella package, including `cgride::core`, `cgride::project`, `cgride::graph`, `cgride::toolchains`, `cgride::executor`, `cgride::cache`, `cgride::engine`, `cgride::config`, and `cgride::cli`.
-
-After installation, another CMake project can use:
-
-```cmake
-find_package(cgride CONFIG REQUIRED)
-target_link_libraries(app PRIVATE cgride::cgride)
-```
-
-and include:
+After installation, integrations include:
 
 ```cpp
 #include <cgride/cgride.hpp>
 ```
 
-The install model is currently CMake-based because Cgride itself is still packaged with CMake. User projects remain Cgride projects and are built through the `cgride` CLI.
+User projects remain Cgride projects and are built through the `cgride` CLI. Repository maintenance stays centered on the Vix commands above.
 
 ## Examples
 
