@@ -1,0 +1,237 @@
+name: release
+
+"on":
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional tag to build/release (e.g. v0.1.0). If empty, uses the current ref."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    name: build (${{ matrix.platform }} / ${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            arch: x86_64
+
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: aarch64
+
+          - os: macos-15-intel
+            platform: macos
+            arch: x86_64
+
+          - os: macos-14
+            platform: macos
+            arch: aarch64
+
+          - os: windows-2022
+            platform: windows
+            arch: x86_64
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      BUILD_DIR: build-release
+      INSTALL_DIR: install-release
+      STRICT_FLAGS: -Wall -Wextra -Wpedantic -Werror
+      RELEASE_FLAGS: -O3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Checkout tag (manual input)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
+        run: |
+          set -euxo pipefail
+          git fetch --tags --force
+          git checkout "tags/${{ github.event.inputs.tag }}"
+
+      - name: Configure
+        run: |
+          set -euxo pipefail
+          cmake -S . -B "$BUILD_DIR" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
+            -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
+            -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
+            -DCGRIDE_BUILD_TESTS=ON \
+            -DCGRIDE_BUILD_MODULE_TESTS=ON \
+            -DCGRIDE_INSTALL=ON
+
+      - name: Build
+        run: |
+          set -euxo pipefail
+          cmake --build "$BUILD_DIR" --parallel
+
+      - name: Test
+        run: |
+          set -euxo pipefail
+          ctest --test-dir "$BUILD_DIR" --output-on-failure
+
+      - name: Install
+        run: |
+          set -euxo pipefail
+          cmake --install "$BUILD_DIR"
+
+      - name: Verify installed package
+        run: |
+          set -euxo pipefail
+          export PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}/bin:$PATH"
+          export CGRIDE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
+
+          cgride --version
+
+          consumer="${RUNNER_TEMP}/cgride-consumer"
+          cmake -E rm -rf "$consumer"
+          cmake -E make_directory "$consumer"
+
+          cat > "$consumer/CMakeLists.txt" <<'EOF'
+          cmake_minimum_required(VERSION 3.22)
+          project(cgride_consumer LANGUAGES CXX)
+          find_package(cgride CONFIG REQUIRED)
+          add_executable(cgride_consumer main.cpp)
+          target_link_libraries(cgride_consumer PRIVATE cgride::cgride)
+          target_compile_features(cgride_consumer PRIVATE cxx_std_23)
+          EOF
+
+          cat > "$consumer/main.cpp" <<'EOF'
+          #include <cassert>
+          #include <string_view>
+          #include <cgride/cgride.hpp>
+
+          int main()
+          {
+            assert(cgride::version_string == std::string_view("0.1.0"));
+            cgride::project::Project project("consumer");
+            auto &app = project.executable("app");
+            app.source("main.cpp");
+            return project.has_target("app") ? 0 : 1;
+          }
+          EOF
+
+          cmake -S "$consumer" -B "$consumer/build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
+          cmake --build "$consumer/build" --parallel
+          "$consumer/build/cgride_consumer"
+
+      - name: Validate installed CLI examples
+        run: |
+          set -euxo pipefail
+          export PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}/bin:$PATH"
+          export CGRIDE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
+
+          for dir in hello static-library multiple-targets; do
+            (cd "examples/$dir" && cgride build --rebuild && cgride run)
+          done
+
+          (cd examples/multiple-targets && cgride run --target server)
+          (cd examples/multiple-targets && cgride run --target worker)
+
+      - name: Package installed tree (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          asset="cgride-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz"
+          tar -C "$INSTALL_DIR" -czf "dist/$asset" .
+          tar -tzf "dist/$asset" | head -n 80
+
+      - name: Package installed tree (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $install = Join-Path $env:GITHUB_WORKSPACE $env:INSTALL_DIR
+          $asset = "cgride-${{ matrix.platform }}-${{ matrix.arch }}.zip"
+          Compress-Archive -Path "$install\*" -DestinationPath "dist\$asset" -Force
+          Get-ChildItem dist
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: publish (github release)
+    needs: build-release
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+
+      - name: Flatten dist only
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+
+          find dist-all -type f -path "*/dist-*/cgride-*" -print0 | while IFS= read -r -d '' f; do
+            base="$(basename "$f")"
+            if [ -f "dist/$base" ]; then
+              echo "Collision while flattening: $base" >&2
+              echo "file: $f" >&2
+              exit 1
+            fi
+            cp -f "$f" "dist/$base"
+          done
+
+          ls -la dist
+          test "$(ls -A dist | wc -l)" -gt 0
+
+      - name: Generate sha256 files
+        run: |
+          set -euxo pipefail
+          cd dist
+          for f in cgride-*; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" > "$f.sha256"
+          done
+          ls -la
+
+      - name: Determine tag
+        id: tag
+        run: |
+          set -euxo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release + upload
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          draft: false
+          prerelease: false
+          files: dist/*
