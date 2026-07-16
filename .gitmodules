@@ -34,3 +34,7 @@
 	path = modules/cli
 	url = https://github.com/cgride/cli.git
 	branch = dev
+[submodule "examples"]
+	path = examples
+	url = https://github.com/cgride/examples.git
+	branch = dev
