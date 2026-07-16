@@ -21,3 +21,17 @@ add_test(
   NAME cgride_umbrella_header_test
   COMMAND cgride_umbrella_header_test
 )
+
+
+find_package(Python3 COMPONENTS Interpreter QUIET)
+
+if(Python3_Interpreter_FOUND)
+  add_test(
+    NAME cgride_cli_noop_integration_test
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/cli_noop_integration_test.py
+      $<TARGET_FILE:cgride_cli_bin>
+      ${PROJECT_BINARY_DIR}
+  )
+endif()
