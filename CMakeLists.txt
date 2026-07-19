@@ -11,6 +11,12 @@ project(
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+
+foreach(config DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${config} "${PROJECT_BINARY_DIR}/bin")
+endforeach()
+
 option(CGRIDE_BUILD_TESTS "Build Cgride umbrella tests" ON)
 option(CGRIDE_BUILD_MODULE_TESTS "Build tests for Cgride modules" ON)
 option(CGRIDE_INSTALL "Install Cgride umbrella package" ON)

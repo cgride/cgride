@@ -159,7 +159,8 @@ jobs:
           mkdir -p dist
           asset="cgride-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz"
           tar -C "$INSTALL_DIR" -czf "dist/$asset" .
-          tar -tzf "dist/$asset" | head -n 80
+          tar -tzf "dist/$asset" > "${RUNNER_TEMP}/${asset}.contents"
+          head -n 80 "${RUNNER_TEMP}/${asset}.contents"
 
       - name: Package installed tree (Windows)
         if: runner.os == 'Windows'
