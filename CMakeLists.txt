@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 project(
   cgride
-  VERSION 0.1.0
+  VERSION 0.1.1
   DESCRIPTION "Embeddable native C++ build engine with a minimal CLI."
   HOMEPAGE_URL "https://github.com/cgride/cgride"
   LANGUAGES CXX

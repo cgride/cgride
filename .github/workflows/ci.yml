@@ -76,7 +76,7 @@ jobs:
           #include <cgride/cgride.hpp>
           int main()
           {
-            assert(cgride::version_string == std::string_view("0.1.0"));
+            assert(cgride::version_string == std::string_view("0.1.1"));
             cgride::project::Project project("consumer");
             auto &app = project.executable("app");
             app.source("main.cpp");

@@ -23,21 +23,21 @@ int main()
   {
     assert(cgride::version_major == 0);
     assert(cgride::version_minor == 1);
-    assert(cgride::version_patch == 0);
+    assert(cgride::version_patch == 1);
     assert(cgride::api_version == 1);
-    assert(cgride::version_string == std::string_view("0.1.0"));
+    assert(cgride::version_string == std::string_view("0.1.1"));
   }
 
   {
-    assert(cgride::core::version_string == std::string_view("0.1.0"));
-    assert(cgride::project::version_string == std::string_view("0.1.0"));
-    assert(cgride::graph::version_string == std::string_view("0.1.0"));
-    assert(cgride::toolchains::version_string == std::string_view("0.1.0"));
-    assert(cgride::executor::version_string == std::string_view("0.1.0"));
-    assert(cgride::cache::version_string == std::string_view("0.1.0"));
-    assert(cgride::engine::version_string == std::string_view("0.1.0"));
-    assert(cgride::config::version_string == std::string_view("0.1.0"));
-    assert(cgride::cli::version_string == std::string_view("0.1.0"));
+    assert(cgride::core::version_string == std::string_view("0.1.1"));
+    assert(cgride::project::version_string == std::string_view("0.1.1"));
+    assert(cgride::graph::version_string == std::string_view("0.1.1"));
+    assert(cgride::toolchains::version_string == std::string_view("0.1.1"));
+    assert(cgride::executor::version_string == std::string_view("0.1.1"));
+    assert(cgride::cache::version_string == std::string_view("0.1.1"));
+    assert(cgride::engine::version_string == std::string_view("0.1.1"));
+    assert(cgride::config::version_string == std::string_view("0.1.1"));
+    assert(cgride::cli::version_string == std::string_view("0.1.1"));
   }
 
   {
