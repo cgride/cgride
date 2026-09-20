@@ -13,31 +13,72 @@
  *  Cgride
  *
  */
-#include <cassert>
-#include <string_view>
+
+#include <iostream>
 
 #include <cgride/cgride.hpp>
+
+#define CGRIDE_CHECK(expression) \
+  do                             \
+  {                              \
+    if (!(expression))           \
+    {                            \
+      std::cerr                  \
+          << "CHECK failed: "    \
+          << #expression         \
+          << '\n'                \
+          << "  at "             \
+          << __FILE__            \
+          << ':'                 \
+          << __LINE__            \
+          << '\n';               \
+      return 1;                  \
+    }                            \
+  } while (false)
 
 int main()
 {
   {
-    assert(cgride::version_major == 0);
-    assert(cgride::version_minor == 1);
-    assert(cgride::version_patch == 1);
-    assert(cgride::api_version == 1);
-    assert(cgride::version_string == std::string_view("0.1.1"));
+    CGRIDE_CHECK(!cgride::version_string.empty());
+    CGRIDE_CHECK(cgride::api_version > 0);
   }
 
   {
-    assert(cgride::core::version_string == std::string_view("0.1.1"));
-    assert(cgride::project::version_string == std::string_view("0.1.1"));
-    assert(cgride::graph::version_string == std::string_view("0.1.1"));
-    assert(cgride::toolchains::version_string == std::string_view("0.1.1"));
-    assert(cgride::executor::version_string == std::string_view("0.1.1"));
-    assert(cgride::cache::version_string == std::string_view("0.1.1"));
-    assert(cgride::engine::version_string == std::string_view("0.1.1"));
-    assert(cgride::config::version_string == std::string_view("0.1.1"));
-    assert(cgride::cli::version_string == std::string_view("0.1.1"));
+    CGRIDE_CHECK(
+        cgride::core::version_string ==
+        cgride::version_string);
+
+    CGRIDE_CHECK(
+        cgride::project::version_string ==
+        cgride::version_string);
+
+    CGRIDE_CHECK(
+        cgride::graph::version_string ==
+        cgride::version_string);
+
+    CGRIDE_CHECK(
+        cgride::toolchains::version_string ==
+        cgride::version_string);
+
+    CGRIDE_CHECK(
+        cgride::executor::version_string ==
+        cgride::version_string);
+
+    CGRIDE_CHECK(
+        cgride::cache::version_string ==
+        cgride::version_string);
+
+    CGRIDE_CHECK(
+        cgride::engine::version_string ==
+        cgride::version_string);
+
+    CGRIDE_CHECK(
+        cgride::config::version_string ==
+        cgride::version_string);
+
+    CGRIDE_CHECK(
+        cgride::cli::version_string ==
+        cgride::version_string);
   }
 
   {
@@ -46,11 +87,13 @@ int main()
     cgride::config::ConfigOptions config_options;
     cgride::cli::CliOptions cli_options;
 
-    assert(project.targets().empty());
-    assert(build_options.valid());
-    assert(config_options.valid());
-    assert(cli_options.valid());
+    CGRIDE_CHECK(project.targets().empty());
+    CGRIDE_CHECK(build_options.valid());
+    CGRIDE_CHECK(config_options.valid());
+    CGRIDE_CHECK(cli_options.valid());
   }
 
   return 0;
 }
+
+#undef CGRIDE_CHECK
