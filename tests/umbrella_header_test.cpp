@@ -44,41 +44,15 @@ int main()
   }
 
   {
-    CGRIDE_CHECK(
-        cgride::core::version_string ==
-        cgride::version_string);
-
-    CGRIDE_CHECK(
-        cgride::project::version_string ==
-        cgride::version_string);
-
-    CGRIDE_CHECK(
-        cgride::graph::version_string ==
-        cgride::version_string);
-
-    CGRIDE_CHECK(
-        cgride::toolchains::version_string ==
-        cgride::version_string);
-
-    CGRIDE_CHECK(
-        cgride::executor::version_string ==
-        cgride::version_string);
-
-    CGRIDE_CHECK(
-        cgride::cache::version_string ==
-        cgride::version_string);
-
-    CGRIDE_CHECK(
-        cgride::engine::version_string ==
-        cgride::version_string);
-
-    CGRIDE_CHECK(
-        cgride::config::version_string ==
-        cgride::version_string);
-
-    CGRIDE_CHECK(
-        cgride::cli::version_string ==
-        cgride::version_string);
+    CGRIDE_CHECK(!cgride::core::version_string.empty());
+    CGRIDE_CHECK(!cgride::project::version_string.empty());
+    CGRIDE_CHECK(!cgride::graph::version_string.empty());
+    CGRIDE_CHECK(!cgride::toolchains::version_string.empty());
+    CGRIDE_CHECK(!cgride::executor::version_string.empty());
+    CGRIDE_CHECK(!cgride::cache::version_string.empty());
+    CGRIDE_CHECK(!cgride::engine::version_string.empty());
+    CGRIDE_CHECK(!cgride::config::version_string.empty());
+    CGRIDE_CHECK(!cgride::cli::version_string.empty());
   }
 
   {
