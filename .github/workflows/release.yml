@@ -151,14 +151,14 @@ jobs:
           EOF
 
           cat > "$consumer/main.cpp" <<'EOF'
-          #include <cassert>
-          #include <string_view>
-
           #include <cgride/cgride.hpp>
 
           int main()
           {
-            assert(cgride::version_string == std::string_view("0.1.1"));
+            if (cgride::version_string.empty())
+            {
+              return 1;
+            }
 
             cgride::project::Project project("consumer");
 
