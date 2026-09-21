@@ -115,12 +115,12 @@ jobs:
 
           int main()
           {
-            if (cgride::version_string.empty()){
+            if (cgride::version_string.empty())
+            {
               return 1;
             }
 
             cgride::project::Project project("consumer");
-
             auto &app = project.executable("app");
             app.source("main.cpp");
 
