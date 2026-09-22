@@ -68,8 +68,11 @@ jobs:
 
           ctest \
             --test-dir build-ninja \
+            --verbose \
             --output-on-failure \
-            --timeout 60
+            --stop-on-failure \
+            --interactive-debug-mode 0 \
+            --timeout 30
 
       - name: Install
         run: |
