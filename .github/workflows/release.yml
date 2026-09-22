@@ -104,8 +104,11 @@ jobs:
 
           ctest \
             --test-dir "$BUILD_DIR" \
+            --verbose \
             --output-on-failure \
-            --timeout 60
+            --stop-on-failure \
+            --interactive-debug-mode 0 \
+            --timeout 30
 
       - name: Install
         run: |
