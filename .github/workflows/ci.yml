@@ -37,28 +37,51 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Select strict compiler flags
         run: |
           set -euo pipefail
 
-          echo "STRICT_FLAGS=-Wall -Wextra -Wpedantic -Werror" >> "$GITHUB_ENV"
-          echo "RELEASE_FLAGS=-O3" >> "$GITHUB_ENV"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "STRICT_FLAGS=/W4 /WX /permissive-" >> "$GITHUB_ENV"
+            echo "RELEASE_FLAGS=/O2 /DNDEBUG" >> "$GITHUB_ENV"
+          else
+            echo "STRICT_FLAGS=-Wall -Wextra -Wpedantic -Werror" >> "$GITHUB_ENV"
+            echo "RELEASE_FLAGS=-O3" >> "$GITHUB_ENV"
+          fi
+
           echo "INSTALL_PREFIX=$RUNNER_TEMP/cgride-install" >> "$GITHUB_ENV"
 
       - name: Configure
         run: |
           set -euo pipefail
 
-          cmake -S . -B build-ninja -G Ninja \
-            -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
-            -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
-            -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
-            -DCGRIDE_BUILD_TESTS=ON \
-            -DCGRIDE_BUILD_MODULE_TESTS=ON
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cmake -S . -B build-ninja -G Ninja \
+              -DCMAKE_CXX_COMPILER=cl \
+              -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
+              -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
+              -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
+              -DCGRIDE_BUILD_TESTS=ON \
+              -DCGRIDE_BUILD_MODULE_TESTS=ON
+          else
+            cmake -S . -B build-ninja -G Ninja \
+              -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
+              -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
+              -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
+              -DCGRIDE_BUILD_TESTS=ON \
+              -DCGRIDE_BUILD_MODULE_TESTS=ON
+          fi
 
       - name: Build
         run: |
           set -euo pipefail
+
           cmake --build build-ninja --parallel
 
       - name: Test
@@ -113,7 +136,6 @@ jobs:
           EOF
 
           cat > "$consumer/main.cpp" <<'EOF'
-
           #include <cgride/cgride.hpp>
 
           int main()
@@ -124,6 +146,7 @@ jobs:
             }
 
             cgride::project::Project project("consumer");
+
             auto &app = project.executable("app");
             app.source("main.cpp");
 
@@ -131,12 +154,22 @@ jobs:
           }
           EOF
 
-          cmake \
-            -S "$consumer" \
-            -B "$consumer/build" \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
-            -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cmake \
+              -S "$consumer" \
+              -B "$consumer/build" \
+              -G Ninja \
+              -DCMAKE_CXX_COMPILER=cl \
+              -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
+              -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX"
+          else
+            cmake \
+              -S "$consumer" \
+              -B "$consumer/build" \
+              -G Ninja \
+              -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
+              -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX"
+          fi
 
           cmake --build "$consumer/build" --parallel
 

@@ -75,21 +75,45 @@ jobs:
           git fetch --tags --force
           git checkout "tags/${{ github.event.inputs.tag }}"
 
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Configure
         run: |
           set -euxo pipefail
 
-          cmake \
-            -S . \
-            -B "$BUILD_DIR" \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
-            -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
-            -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
-            -DCGRIDE_BUILD_TESTS=ON \
-            -DCGRIDE_BUILD_MODULE_TESTS=ON \
-            -DCGRIDE_INSTALL=ON
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cmake \
+              -S . \
+              -B "$BUILD_DIR" \
+              -G Ninja \
+              -DCMAKE_CXX_COMPILER=cl \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
+              -DCMAKE_CXX_FLAGS="/W4 /WX /permissive-" \
+              -DCMAKE_CXX_FLAGS_RELEASE="/O2 /DNDEBUG" \
+              -DCGRIDE_BUILD_TESTS=ON \
+              -DCGRIDE_BUILD_MODULE_TESTS=ON \
+              -DCGRIDE_INSTALL=ON
+          else
+            cmake \
+              -S . \
+              -B "$BUILD_DIR" \
+              -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
+              -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
+              -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
+              -DCGRIDE_BUILD_TESTS=ON \
+              -DCGRIDE_BUILD_MODULE_TESTS=ON \
+              -DCGRIDE_INSTALL=ON
+          fi
 
       - name: Build
         run: |
@@ -172,12 +196,22 @@ jobs:
           }
           EOF
 
-          cmake \
-            -S "$consumer" \
-            -B "$consumer/build" \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cmake \
+              -S "$consumer" \
+              -B "$consumer/build" \
+              -G Ninja \
+              -DCMAKE_CXX_COMPILER=cl \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
+          else
+            cmake \
+              -S "$consumer" \
+              -B "$consumer/build" \
+              -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
+          fi
 
           cmake --build "$consumer/build" --parallel
 
@@ -190,6 +224,8 @@ jobs:
 
           export PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}/bin:$PATH"
           export CGRIDE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
+
+          cgride --version
 
           for dir in hello static-library multiple-targets; do
             (
