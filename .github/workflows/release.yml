@@ -84,36 +84,39 @@ jobs:
         with:
           arch: x64
 
-      - name: Configure
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake `
+            -S . `
+            -B "$env:BUILD_DIR" `
+            -G Ninja `
+            -DCMAKE_CXX_COMPILER=cl `
+            -DCMAKE_BUILD_TYPE=Release `
+            "-DCMAKE_INSTALL_PREFIX=$env:GITHUB_WORKSPACE/$env:INSTALL_DIR" `
+            "-DCMAKE_CXX_FLAGS=/W4 /WX /permissive-" `
+            "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /DNDEBUG" `
+            -DCGRIDE_BUILD_TESTS=ON `
+            -DCGRIDE_BUILD_MODULE_TESTS=ON `
+            -DCGRIDE_INSTALL=ON
+
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
         run: |
           set -euxo pipefail
 
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            cmake \
-              -S . \
-              -B "$BUILD_DIR" \
-              -G Ninja \
-              -DCMAKE_CXX_COMPILER=cl \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
-              -DCMAKE_CXX_FLAGS="/W4 /WX /permissive-" \
-              -DCMAKE_CXX_FLAGS_RELEASE="/O2 /DNDEBUG" \
-              -DCGRIDE_BUILD_TESTS=ON \
-              -DCGRIDE_BUILD_MODULE_TESTS=ON \
-              -DCGRIDE_INSTALL=ON
-          else
-            cmake \
-              -S . \
-              -B "$BUILD_DIR" \
-              -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
-              -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
-              -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
-              -DCGRIDE_BUILD_TESTS=ON \
-              -DCGRIDE_BUILD_MODULE_TESTS=ON \
-              -DCGRIDE_INSTALL=ON
-          fi
+          cmake \
+            -S . \
+            -B "$BUILD_DIR" \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
+            -DCMAKE_CXX_FLAGS="$STRICT_FLAGS" \
+            -DCMAKE_CXX_FLAGS_RELEASE="$RELEASE_FLAGS" \
+            -DCGRIDE_BUILD_TESTS=ON \
+            -DCGRIDE_BUILD_MODULE_TESTS=ON \
+            -DCGRIDE_INSTALL=ON
 
       - name: Build
         run: |
