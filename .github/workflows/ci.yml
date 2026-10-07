@@ -64,7 +64,7 @@ jobs:
             -G Ninja `
             -DCMAKE_CXX_COMPILER=cl `
             -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" `
-            "-DCMAKE_CXX_FLAGS=/W4 /WX /permissive-" `
+            "-DCMAKE_CXX_FLAGS=/W4 /WX /permissive- /EHsc" `
             "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /DNDEBUG" `
             -DCGRIDE_BUILD_TESTS=ON `
             -DCGRIDE_BUILD_MODULE_TESTS=ON
